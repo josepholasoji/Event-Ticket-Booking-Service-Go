@@ -4,6 +4,9 @@ import (
 	"log"
 
 	"bookingservice/actions"
+	"bookingservice/controllers"
+	"bookingservice/initializations"
+	"bookingservice/services"
 )
 
 // main is the starting point for your Buffalo application.
@@ -13,6 +16,15 @@ import (
 // call `app.Serve()`, unless you don't want to start your
 // application that is. :)
 func main() {
+	initializations.Initialize()
+	defer initializations.CloseMySQLDB()
+
+	// start the services
+	actions.UserService = services.NewUserService()
+
+	// start the controllers
+	actions.UserController = controllers.NewLoginUserController(actions.UserService)
+
 	app := actions.App()
 	if err := app.Serve(); err != nil {
 		log.Fatal(err)

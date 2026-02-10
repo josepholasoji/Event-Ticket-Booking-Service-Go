@@ -1,44 +1,72 @@
-# This is a multi-stage Dockerfile and requires >= Docker 17.05
-# https://docs.docker.com/engine/userguide/eng-image/multistage-build/
-FROM gobuffalo/buffalo:v0.18.14 as builder
+# ============================
+# Build stage
+# ============================
+FROM golang:1.25.6-alpine AS builder
 
-ENV GOPROXY http://proxy.golang.org
+# Install system dependencies required by Buffalo
+RUN apk add --no-cache \
+	git \
+	bash \
+	build-base \
+	postgresql-client
 
-RUN mkdir -p /src/bookingservice
-WORKDIR /src/bookingservice
+# Install Buffalo CLI
+RUN go install github.com/gobuffalo/cli/cmd/buffalo@latest
 
-# this will cache the npm install step, unless package.json changes
-ADD package.json .
-ADD yarn.lock .yarnrc.yml ./
-RUN mkdir .yarn
-COPY .yarn .yarn
-RUN yarn install
-# Copy the Go Modules manifests
-COPY go.mod go.mod
-COPY go.sum go.sum
-# cache deps before building and copying source so that we don't need to re-download as much
-# and so that source changes don't invalidate our downloaded layer
+WORKDIR /app
+
+# Copy Go module files first (better layer caching)
+COPY go.mod go.sum ./
 RUN go mod download
 
-ADD . .
-RUN buffalo build --static -o /bin/app
+# Copy configuration files required by Pop
+COPY config/ ./config/
+COPY database.yml ./
+# Copy the rest of the application
+COPY . .
 
-FROM alpine
-RUN apk add --no-cache bash
-RUN apk add --no-cache ca-certificates
+# Build the Buffalo app for production
+# -static: statically link libc to avoid runtime dependencies
+# -o bin/app: output to bin directory
+RUN buffalo build -v --environment production --static -o bin/app
 
-WORKDIR /bin/
+# ============================
+# Runtime stage
+# ============================
+FROM alpine:3.20
 
-COPY --from=builder /bin/app .
+# Install runtime dependencies
+RUN apk add --no-cache \
+	ca-certificates \
+	postgresql-client \
+	bash
 
-# Uncomment to run the binary in "production" mode:
-# ENV GO_ENV=production
+WORKDIR /app
 
-# Bind the app to 0.0.0.0 so it can be seen from outside the container
-ENV ADDR=0.0.0.0
+# Create non-root user
+RUN addgroup -S app && adduser -S app -G app
 
+# Copy the compiled binary from builder
+COPY --from=builder --chown=app:app /app/bin/app /app/app
+
+# Copy configuration files and migrations
+COPY --from=builder --chown=app:app /app/config /app/config
+COPY --from=builder --chown=app:app /app/database.yml /app/database.yml
+COPY --from=builder --chown=app:app /app/migrations /app/migrations
+
+# Set runtime user
+USER app
+
+# Expose Buffalo default port
 EXPOSE 3000
 
-# Uncomment to run the migrations before running the binary:
-# CMD /bin/app migrate; /bin/app
-CMD exec /bin/app
+# Optional runtime environment defaults
+ENV GO_ENV=production
+
+# Lightweight healthcheck (returns 0 if binary exists)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+	CMD ["/bin/sh", "-c", "[ -x /app/app ] && echo ok || exit 1"]
+
+# Run the application
+ENTRYPOINT ["/app/app"]
+
