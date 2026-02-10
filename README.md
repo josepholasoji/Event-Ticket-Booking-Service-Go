@@ -1,6 +1,8 @@
 **Event Booking App:**
 
-A Spring Boot–based event booking and notification system that allows users to register, authenticate, create events, search and book tickets, and receive event notifications. The application is built with Java 17, Maven, Docker Compose, MariaDB, and ActiveMQ, includes unit and integration tests, preloaded sample data, and exposes RESTful JSON APIs for user, event, booking, and authentication workflows.
+A Go + Buffalo–based microservice event booking and notification platform that enables users to register, authenticate, create and manage events, search events, book tickets, and receive event notifications. The system is built using Go (1.21+), Buffalo framework, Docker Compose, MariaDB, and a message broker (Kafka), and exposes RESTful JSON APIs for user management, authentication, event management, booking workflows, and notification delivery.
+
+The repo includes unit and integration tests, containerized local development setup, and seeded sample data for rapid onboarding and testing.
 
 FUNTIONAL REQUIREMENTS:
 
@@ -22,44 +24,63 @@ NON-FUNCTIONAL REQUIREMENTS:
 5.  Input/output data MUST be in JSON format;
 6.  Use a framework of your choice, but popular, up-to-date, and long-term support versions are recommended.
 
-REQUIREMENT TO RUN THE APP:  
-1\. JDK v17 (LTS). The sample is built with Spring Boot 3.xxx
+## REQUIREMENTS TO RUN THE APPLICATION
 
-2\. Maven 3x
+1. **Go (v1.21 or later)**  
+   Required to build and run the Buffalo-based services.
 
-3\. Docker desktop (WSL 2.0 for windows OS)
+2. **Buffalo CLI**  
+   Required for running and managing the Buffalo application.
 
-NB: Ensure Java, mvn and docker-compose are in your system path before trying to start the demo app.
+3. **Docker Desktop**  
+   Required for running supporting services (e.g., database, message broker).
+   - **Windows users:** Ensure **WSL 2** is enabled and configured.
 
-TESTING THE APP:  
-1\. CD into the **&lt;base folder&gt;/bookings**
+---
 
-**2\. Run: docker-compose -f .\\compose.yaml up -d**
+**Note:**  
+Ensure `go`, `buffalo`, `docker`, and `docker compose` are available in your system PATH before starting the application.
 
-This demo app uses the docker compose to load the dependent services:  
-1\. Maria DB: To store the booking app database
+## RUNNING AND TESTING THE APPLICATION
 
-2\. Active MQ: For event notification
+1. **Navigate to the service directory**
 
-**3\. Run: mvn clean;mvn package**
+   ```bash
+   cd <base-folder>/bookingservice
 
-We need this step to run all test and generate sample data. Take note that the tests also contain the “_functionalRequirementTest_” which does run integrations test to confirm all the implemented functional requirements.
+   ```
 
-**4\. CD into &lt;base folder&gt;/bookings/target**
+2. **Start dependent services using Docker Compose**
+   ```bash
+   docker compose -f compose.yaml up -d
+   ```
+This will start required supporting services:
 
-**5\. Run: java -jar booking-0.0.1-SNAPSHOT.jar**
+- 1. MariaDB — Stores application data
+- 2. Message Broker (e.g., Kafka) — Handles event notifications
 
-ASSUMTIONS MADE IN THIS DEMO APP PROJECT:  
-1\. This is a test project therefore:
+3. **Run tests and build the service**
+   ```bash
+   go test ./...
+   go build -o bookingservice
+   ```
+- This step runs all tests and prepares the service binary (and can trigger sample data seeding if configured).
 
-1.  There is no requirement for an accurate event timing and notification.
-2.  There is no requirement to test for a in ability to book an even due to capacity
+4. **Run the service**
+    ````bash
+    ./bookingservice
+5. **To build, run amd auto reload while developing you service**
+    ```bash
+    buffalo dev
+    ```
+ASSUMTIONS MADE IN THIS DEMO APP PROJECT:
+1. This is a test project therefore:
+2.  There is no requirement for an accurate event timing and notification.
+3.  There is no requirement to test for a in ability to book an even due to capacity
 
-ANY ISSUES:  
+ANY ISSUES:
 Please, ensure that other app is not using port 8080.
-
 API ENDPOINTS: _See the added pictures for screenshot of local postman calls._
-
 Base-path: https://localhost:8080/booking/api
 
 |     |     |     |
@@ -74,13 +95,12 @@ Base-path: https://localhost:8080/booking/api
 | 7   | DELETE /&lt;base-path&gt;/events/{eventid}/tickets/{ticketsId} | Cancel a booking |
 | 8   | POST /&lt;base-path&gt;/auth | Login a user |
 
-DEMO (SAMPLE) PRELOADED USER:  
+DEMO (SAMPLE) PRELOADED USER:
 Username: sample@admin.com
-
 Password: adminadmin
 
-DATA AND TABLE DEFINITIONS:  
-Please see, init-scipts for the SQL migration files.  
+DATA AND TABLE DEFINITIONS:
+Please see, init-scipts for the SQL migration files.
 <br/>bookings
 
 |     |     |     |     |     |     |
@@ -133,3 +153,4 @@ users
 | created_at | timestamp | Created at |     | YES | current_timestamp() |
 | updated_at | timestamp | Updated at |     | YES | current_timestamp() |
 | is_active | tinyint(1) | Is the user active? |     | YES | 1   |
+````
