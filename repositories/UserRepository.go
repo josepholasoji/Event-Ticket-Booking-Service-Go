@@ -5,6 +5,12 @@ import (
 	"bookingservice/models"
 )
 
+type UserRepositoryInterface interface {
+	GetAllUsers() ([]models.User, error)
+	FindUserByName(username string) (*models.User, error)
+	SaveUser(name string, username string, password string) error
+}
+
 type UserRepository struct {
 }
 

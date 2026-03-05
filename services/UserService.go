@@ -16,7 +16,7 @@ import (
 )
 
 type UserService struct {
-	userRepository *repositories.UserRepository
+	userRepository repositories.UserRepositoryInterface
 }
 
 func (s *UserService) CreateUser(request dtos.CreateUserRequest) error {
@@ -149,5 +149,11 @@ func (s *UserService) CheckPasswordHash(password, hash string) bool {
 func NewUserService() *UserService {
 	return &UserService{
 		userRepository: repositories.NewUserRepository(),
+	}
+}
+
+func NewUserServiceWithRepository(repo repositories.UserRepositoryInterface) *UserService {
+	return &UserService{
+		userRepository: repo,
 	}
 }
